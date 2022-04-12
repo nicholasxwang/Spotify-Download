@@ -9,9 +9,12 @@ from youtube_search import YoutubeSearch
 
 # **************PLEASE READ THE README.md FOR USE INSTRUCTIONS**************
 
-def write_tracks(text_file: str, tracks: dict):
+def write_tracks(text_file, tracks):
+
     # Writes the information of all tracks in the playlist to a text file. 
     # This includins the name, artist, and spotify URL. Each is delimited by a comma.
+    text_file = str(text_file)
+    tracks = dict(tracks) 
     with open(text_file, 'w+', encoding='utf-8') as file_out:
         while True:
             for item in tracks['items']:
@@ -39,7 +42,9 @@ def write_tracks(text_file: str, tracks: dict):
                 break
 
 
-def write_playlist(username: str, playlist_id: str):
+def write_playlist(username, playlist_id):
+    username = str(username)
+    playlist_id = str(playlist_id)
     results = spotify.user_playlist(username, playlist_id, fields='tracks,next,name')
     playlist_name = results['name']
     text_file = u'{0}.txt'.format(playlist_name, ok='-_()[]{}')
@@ -49,7 +54,8 @@ def write_playlist(username: str, playlist_id: str):
     return playlist_name
 
 
-def find_and_download_songs(reference_file: str):
+def find_and_download_songs(reference_file):
+    reference_file = str(reference_file)
     TOTAL_ATTEMPTS = 10
     with open(reference_file, "r", encoding='utf-8') as file:
         for line in file:
@@ -81,21 +87,24 @@ def find_and_download_songs(reference_file: str):
                 }],
             }
             with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-                ydl.download([best_url])
+                try:
+                    ydl.download([best_url])
+                except:
+                    print("[error] kinda broke but meh")
 
 
 if __name__ == "__main__":
     # Parameters
     print("Please read README.md for use instructions.")    
-    client_id = input("Client ID: ")
-    client_secret = input("Client secret: ")
-    username = input("Spotify username: ")
-    playlist_uri = input("Playlist URI (excluding \"spotify:playlist:\"): ")
+    client_id = "89af8ca1688d4104a64e8f8e65d2ddae"
+    client_secret = "b433607ebfb44dc6bb1ecd3e2d14d723"
+    username = "	kkbp42dkp4hweuogt99r8t8wf"
+    playlist_uri = "4uT2sjCdhY30NBMktykuLO"
     auth_manager = oauth2.SpotifyClientCredentials(client_id=client_id, client_secret=client_secret)
     spotify = spotipy.Spotify(auth_manager=auth_manager)
     playlist_name = write_playlist(username, playlist_uri)
     reference_file = "{}.txt".format(playlist_name)
-    # Create the playlist folder
+    # Create the playlist folderm
     if not os.path.exists(playlist_name):
         os.makedirs(playlist_name)
     os.rename(reference_file, playlist_name + "/" + reference_file)
