@@ -135,7 +135,7 @@ if __name__ == "__main__":
     reference_file = "{}.txt".format("songs")
     # Create the playlist folder
     if not os.path.exists("songs"):
-        os.makedirs("songs")
+        os.makedirs("songs9")
     os.rename(reference_file, "songs" + "/" + reference_file)
     os.chdir("songs")
     find_and_download_songs(reference_file)
