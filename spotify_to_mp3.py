@@ -13,30 +13,47 @@ def clear_terminal():
     # for mac and linux(here, os.name is 'posix')
     else:
         _ = system('clear')
+def add_album_art(file_path, image, title, artist, album):
+    from mutagen.mp3 import MP3
+    from mutagen.id3 import ID3, APIC, error
+    from mutagen.easyid3 import EasyID3
+    import urllib.request
+    urllib.request.urlretrieve(image, "image.jpg")
 
+    audio = MP3(f"./songs/{file_path}", ID3=ID3)
 
-def convert_to_mp3(folder):
-    from os import walk
-    f = []
-    for (dirpath, dirnames, filenames) in walk(folder):
-        f.extend(filenames)
-        break
-    endings = {}
-    for i in f:
-        splitted = i.split(".")
-        try:
-            endings[splitted[-1].lower()] += 1
-        except:
-            endings[splitted[-1].lower()] = 1
-    print(endings)
+    # add ID3 tag if it doesn't exist
+    try:
+        audio.add_tags()
+    except error:
+        pass
+    open("image.jpg", 'rb').read()
+    audio.tags.add(
+        APIC(
+            encoding=3,  # 3 is for utf-8
+            mime='image/jpeg',  # image/jpeg or image/png
+            type=3,  # 3 is for the cover image
+            desc=u'Cover',
+            data=open("image.jpg", 'rb').read()
+        )
+    )
+    audio.save()
+    audio = EasyID3(f"./songs/{file_path}")
+    audio['title'] = title
+    audio['artist'] = artist
+    audio['album'] = album
+    audio['composer'] = u""  # clear
+    audio.save()
+
+def convert_to_mp3(file):
     from pydub import AudioSegment
-    for i in f:
-        ending = i.split(".")[-1].lower()
-        if ending == "part" or ending == "ds_store" or ending == "txt":
-            continue
-        print("Making " + i)
-        audio = AudioSegment.from_file("./Pop Music (Winter 2021)/" + i, format=ending)
-        audio.export("./MP3-Music/" + i.replace(ending, "mp3"), format="mp3")
+    ending = file.split(".")[-1].lower()
+    if ending == "part" or ending == "ds_store" or ending == "txt":
+        print('MP3 Skipped')
+    else:
+        print("Making " + file)
+        audio = AudioSegment.from_file("./songs/" + file, format=ending)
+        audio.export("./songs/" + file.replace(ending, "mp3"), format="mp3")
 
 def write_tracks(text_file, tracks):
 
@@ -119,28 +136,36 @@ def find_and_download_songs(reference_file):
             with youtube_dl.YoutubeDL(ydl_opts) as ydl:
                 try:
                     ydl.download([best_url])
-                except:
-                    print("[error] kinda broke but meh")
+                except Exception as e:
+                    print("Error: "+e)
+            #get latest file
+            import glob
+            import os
+
+            list_of_files = glob.glob('/songs/')  # * means all if need specific format then *.csv
+            print(list_of_files)
+            latest_file = max(list_of_files, key=os.path.getctime)
+            print(latest_file)
+            convert_to_mp3(latest_file)
 
 
-if __name__ == "__main__":
-    # Parameters
-    client_id = "846095b9ce934b0da3e0aaf3adbf600c"
-    client_secret = "1d79c77cee124d8f8e20b16f720d65e8"
-    username = "kkbp42dkp4hweuogt99r8t8wf"
-    playlist_uri = "5AbjzbPFE7rMP2ndFqd6mT"
-    auth_manager = oauth2.SpotifyClientCredentials(client_id=client_id, client_secret=client_secret)
-    spotify = spotipy.Spotify(auth_manager=auth_manager)
-    playlist_name = write_playlist(username, playlist_uri)
-    reference_file = "{}.txt".format("songs")
-    # Create the playlist folder
-    if not os.path.exists("songs"):
-        os.makedirs("songs9")
-    os.rename(reference_file, "songs" + "/" + reference_file)
-    os.chdir("songs")
-    find_and_download_songs(reference_file)
-    clear_terminal()
-    print("Converting to MP3...")
-    convert_to_mp3("songs")
-    clear_terminal()
-    print("Operation complete.")
+# Parameters
+client_id = "846095b9ce934b0da3e0aaf3adbf600c"
+client_secret = "1d79c77cee124d8f8e20b16f720d65e8"
+username = "kkbp42dkp4hweuogt99r8t8wf"
+playlist_uri = "6a3BM9U9pm5R4OoXuEyfBa"
+auth_manager = oauth2.SpotifyClientCredentials(client_id=client_id, client_secret=client_secret)
+spotify = spotipy.Spotify(auth_manager=auth_manager)
+playlist_name = write_playlist(username, playlist_uri)
+reference_file = "{}.txt".format("songs")
+# Create the playlist folder
+if not os.path.exists("songs"):
+    os.makedirs("songs")
+os.rename(reference_file, "songs" + "/" + reference_file)
+os.chdir("songs")
+find_and_download_songs(reference_file)
+clear_terminal()
+print("Converting to MP3...")
+convert_to_mp3("songs")
+clear_terminal()
+print("Operation complete.")
