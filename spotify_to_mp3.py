@@ -81,7 +81,6 @@ def write_tracks(text_file, tracks):
                 except KeyError:
                     print(u'Skipping track {0} by {1} (local only?)'.format(
                             track['name'], track['artists'][0]['name']))
-            # 1 page = 50 results, check if there are more pages
             if tracks['next']:
                 tracks = spotify.next(tracks)
             else:
