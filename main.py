@@ -15,8 +15,12 @@ def clear_terminal():
 
 client_id = "846095b9ce934b0da3e0aaf3adbf600c"
 client_secret = "1d79c77cee124d8f8e20b16f720d65e8"
+playlist = input("Input spotify URL: ")
 username = "kkbp42dkp4hweuogt99r8t8wf"
-playlist_uri = "6a3BM9U9pm5R4OoXuEyfBa"
+#5AbjzbPFE7rMP2ndFqd6mT?si=608373e66f0c4573
+playlist_uri = playlist.strip("https://open.spotify.com/playlist/")
+if "?" in playlist_uri:
+    playlist_uri = playlist_uri[0:playlist_uri.index("?")]
 auth_manager = oauth2.SpotifyClientCredentials(client_id=client_id, client_secret=client_secret)
 spotify = spotipy.Spotify(auth_manager=auth_manager)
 results = spotify.user_playlist(username, playlist_uri, fields='tracks,next,name')
@@ -88,9 +92,9 @@ for item in tracks['items']:
                 print('MP3 Skipped')
             else:
                 print("Making " + latest_file)
-                audio = AudioSegment.from_file("./songs/" + latest_file, format=ending)
-                audio.export("./songs/" + latest_file.replace(ending, "mp3"), format="mp3")
-                os.remove("./songs/"+latest_file)
+                audio = AudioSegment.from_file(latest_file, format=ending)
+                audio.export(latest_file.replace(ending, "mp3"), format="mp3")
+                os.remove(latest_file)
             latest_file = latest_file.replace(ending, "mp3")
         from mutagen.mp3 import MP3
         from mutagen.id3 import ID3, APIC, error
