@@ -38,9 +38,8 @@ print(u'Writing {0} tracks to {1}.'.format(results['tracks']['total'], text_file
 tracks = results['tracks']
 count = -1
 for item in tracks['items']:
+    os.system("youtube-dl --rm-cache-dir")
     count +=1
-    if count<25:
-        continue
     if 'track' in item:
         track = item['track']
     else:
@@ -54,7 +53,7 @@ for item in tracks['items']:
         print(track_name)
         text_to_search = track_artist + " - " + track_name
         best_url = None
-        TOTAL_ATTEMPTS = 10
+        TOTAL_ATTEMPTS = 100
         attempts_left = TOTAL_ATTEMPTS
         while attempts_left > 0:
             try:
