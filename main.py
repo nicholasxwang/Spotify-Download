@@ -33,6 +33,8 @@ for item in tracks['items']:
         track_url = track['external_urls']['spotify']
         track_name = track['name']
         track_artist = track['artists'][0]['name']
+        track_image = track["album"]["images"][0]["url"]
+        track_album = track["album"]["name"]
         print(track_name)
         text_to_search = track_artist + " - " + track_name
         best_url = None
@@ -61,13 +63,11 @@ for item in tracks['items']:
             }
 
             ],
-            #'outtmpl': './songs/'
-            # 'outtmpl': 'songs'
-            # 'outtmpl': 'songs/'
-            # 'outtmpl': '/songs'
-            #'outtmpl': '/songs/'
-            #'outtmpl' : '~/Users/NicholasWang/spotify-to-mp3-python/songs'
-            'outtmpl' : '~/Users/NicholasWang/spotify-to-mp3-python/songs.'
+            #'outtmpl' : './songs.',
+            # 'outtmpl': './songs.',
+            #'outtmpl': './songs',
+            'outtmpl': './songs/'+track_artist+" - "+track_name+".",
+            'keevideo': True
         }
         with youtube_dl.YoutubeDL(ydl_opts) as ydl:
             try:
@@ -78,9 +78,53 @@ for item in tracks['items']:
         import glob
         import os
 
-        list_of_files = glob.glob('./songs')  # * means all if need specific format then *.csv
+        list_of_files = glob.glob('./songs/*')  # * means all if need specific format then *.csv
         latest_file = max(list_of_files, key=os.path.getctime)
-        print(latest_file)
+        if latest_file.split(".")[-1].lower() != "mp3":
+            from pydub import AudioSegment
+
+            ending = latest_file.split(".")[-1].lower()
+            if ending == "part" or ending == "ds_store" or ending == "txt":
+                print('MP3 Skipped')
+            else:
+                print("Making " + latest_file)
+                audio = AudioSegment.from_file("./songs/" + latest_file, format=ending)
+                audio.export("./songs/" + latest_file.replace(ending, "mp3"), format="mp3")
+                os.remove("./songs/"+latest_file)
+            latest_file = latest_file.replace(ending, "mp3")
+        from mutagen.mp3 import MP3
+        from mutagen.id3 import ID3, APIC, error
+        from mutagen.easyid3 import EasyID3
+        import urllib.request
+
+        urllib.request.urlretrieve(track_image, "image.jpg")
+
+        audio = MP3(f"{latest_file}", ID3=ID3)
+
+        # add ID3 tag if it doesn't exist
+        try:
+            audio.add_tags()
+        except error:
+            pass
+        open("image.jpg", 'rb').read()
+        audio.tags.add(
+            APIC(
+                encoding=3,  # 3 is for utf-8
+                mime='image/jpeg',  # image/jpeg or image/png
+                type=3,  # 3 is for the cover image
+                desc=u'Cover',
+                data=open("image.jpg", 'rb').read()
+            )
+        )
+        audio.save()
+        audio = EasyID3(f"{latest_file}")
+        audio['title'] = track_name
+        audio['artist'] = track_artist
+        audio['album'] = track_album
+        audio['composer'] = u""  # clear
+        audio.save()
+        os.remove("image.jpg")
+
     except KeyError:
         print(u'Skipping track {0} by {1} (local only?)'.format(
             track['name'], track['artists'][0]['name']))
