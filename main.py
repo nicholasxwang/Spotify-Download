@@ -1,4 +1,4 @@
-import os
+import threading, logging
 from os import system, name
 import spotipy
 import spotipy.oauth2 as oauth2
@@ -12,6 +12,7 @@ from mutagen.mp3 import MP3
 from mutagen.id3 import ID3, APIC, error
 from mutagen.easyid3 import EasyID3
 import urllib.request
+mode = "NOTHREADS"
 def clear_terminal():
     # for windows
     if name == 'nt':
@@ -20,30 +21,8 @@ def clear_terminal():
     # for mac and linux(here, os.name is 'posix')
     else:
         _ = system('clear')
-
-client_id = "846095b9ce934b0da3e0aaf3adbf600c"
-client_secret = "1d79c77cee124d8f8e20b16f720d65e8"
-playlist = input("Input spotify URL: ")
-username = "kkbp42dkp4hweuogt99r8t8wf"
-#5AbjzbPFE7rMP2ndFqd6mT?si=608373e66f0c4573
-playlist_uri = playlist.strip("https://open.spotify.com/playlist/")
-if "?" in playlist_uri:
-    playlist_uri = playlist_uri[0:playlist_uri.index("?")]
-auth_manager = oauth2.SpotifyClientCredentials(client_id=client_id, client_secret=client_secret)
-spotify = spotipy.Spotify(auth_manager=auth_manager)
-results = spotify.user_playlist(username, playlist_uri, fields='tracks,next,name')
-playlist_name = results['name']
-text_file = "songs.txt"
-print(u'Writing {0} tracks to {1}.'.format(results['tracks']['total'], text_file))
-tracks = results['tracks']
-count = -1
-for item in tracks['items']:
-    os.system("youtube-dl --rm-cache-dir")
-    count +=1
-    if 'track' in item:
-        track = item['track']
-    else:
-        track = item
+def download_track(track):
+    logging.info("Thread %s: starting", track)
     try:
         track_url = track['external_urls']['spotify']
         track_name = track['name']
@@ -66,9 +45,10 @@ for item in tracks['items']:
                     text_to_search, attempts_left))
         if best_url is None:
             print("No valid URLs found for {}, skipping track.".format(text_to_search))
-            continue
+            return
         # Run you-get to fetch and download the link's audio
         print("Initiating download for {}.".format(text_to_search))
+        os.system("youtube-dl --rm-cache-dir")
         ydl_opts = {
             'format': 'bestaudio/best',
             'postprocessors': [{
@@ -78,9 +58,7 @@ for item in tracks['items']:
             }
 
             ],
-            #'outtmpl' : './songs.',
-            # 'outtmpl': './songs.',
-            #'outtmpl': './songs',
+            #'quiet': True,
             'outtmpl': './songs/'+track_artist.replace("/", "_").replace(".", "_").replace("~", "_")+" - "+track_name.replace("/", "_").replace(".", "_").replace("~", "_")+".",
             'keevideo': True
         }
@@ -92,12 +70,12 @@ for item in tracks['items']:
 
 
 
-        list_of_files = glob.glob('./songs/*')  # * means all if need specific format then *.csv
+        list_of_files = glob.glob('./songs/*')
         latest_file = max(list_of_files, key=os.path.getctime)
         if latest_file.split(".")[-1].lower() != "mp3":
 
             time.sleep(5)
-            list_of_files = glob.glob('./songs/*')  # * means all if need specific format then *.csv
+            list_of_files = glob.glob('./songs/*')
             latest_file = max(list_of_files, key=os.path.getctime)
 
 
@@ -112,23 +90,21 @@ for item in tracks['items']:
             latest_file = latest_file.replace(ending, "mp3")
 
 
-        urllib.request.urlretrieve(track_image, "image.jpg")
+        urllib.request.urlretrieve(track_image, f"{track_name}-{track_artist}.jpg")
 
         audio = MP3(f"{latest_file}", ID3=ID3)
-
-        # add ID3 tag if it doesn't exist
         try:
             audio.add_tags()
         except error:
             pass
-        open("image.jpg", 'rb').read()
+        open(f"{track_name}-{track_artist}.jpg", 'rb').read()
         audio.tags.add(
             APIC(
                 encoding=3,  # 3 is for utf-8
                 mime='image/jpeg',  # image/jpeg or image/png
                 type=3,  # 3 is for the cover image
                 desc=u'Cover',
-                data=open("image.jpg", 'rb').read()
+                data=open(f"{track_name}-{track_artist}.jpg", 'rb').read()
             )
         )
         audio.save()
@@ -138,9 +114,51 @@ for item in tracks['items']:
         audio['album'] = track_album
         audio['composer'] = u""  # clear
         audio.save()
-        os.remove("image.jpg")
-
+        os.remove(f"{track_name}-{track_artist}.jpg")
+        logging.info("Thread %s: successful", track)
     except KeyError:
         print(u'Skipping track {0} by {1} (local only?)'.format(
             track['name'], track['artists'][0]['name']))
-#print(tracks)
+
+
+client_id = "846095b9ce934b0da3e0aaf3adbf600c"
+client_secret = "1d79c77cee124d8f8e20b16f720d65e8"
+playlist = input("Input spotify URL: ")
+username = "kkbp42dkp4hweuogt99r8t8wf"
+#5AbjzbPFE7rMP2ndFqd6mT?si=608373e66f0c4573
+playlist_uri = playlist.strip("https://open.spotify.com/playlist/")
+if "?" in playlist_uri:
+    playlist_uri = playlist_uri[0:playlist_uri.index("?")]
+auth_manager = oauth2.SpotifyClientCredentials(client_id=client_id, client_secret=client_secret)
+spotify = spotipy.Spotify(auth_manager=auth_manager)
+results = spotify.user_playlist(username, playlist_uri, fields='tracks,next,name')
+playlist_name = results['name']
+text_file = "songs.txt"
+print(u'Writing {0} tracks to {1}.'.format(results['tracks']['total'], text_file))
+tracks = results['tracks']
+count = -1
+threads = list()
+for item in tracks['items']:
+
+    count += 1
+    # if count<=52:
+    #
+    #     continue
+    os.system("youtube-dl --rm-cache-dir")
+    count +=1
+    if 'track' in item:
+        track = item['track']
+    else:
+        track = item
+    if mode == "Threads":
+        #x = threading.Thread(target=download_track(track), args=(count,))
+        x = threading.Thread(target=download_track, args=[track])
+        threads.append(x)
+        x.start()
+    else:
+        download_track(track)
+if mode == "Threads":
+    for index, thread in enumerate(threads):
+        logging.info("Main    : before joining thread %d.", index)
+        thread.join()
+        logging.info("Main    : thread %d done", index)
