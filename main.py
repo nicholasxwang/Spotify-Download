@@ -4,6 +4,14 @@ import spotipy
 import spotipy.oauth2 as oauth2
 import youtube_dl
 from youtube_search import YoutubeSearch
+import glob
+import os
+import time
+from pydub import AudioSegment
+from mutagen.mp3 import MP3
+from mutagen.id3 import ID3, APIC, error
+from mutagen.easyid3 import EasyID3
+import urllib.request
 def clear_terminal():
     # for windows
     if name == 'nt':
@@ -28,7 +36,11 @@ playlist_name = results['name']
 text_file = "songs.txt"
 print(u'Writing {0} tracks to {1}.'.format(results['tracks']['total'], text_file))
 tracks = results['tracks']
+count = -1
 for item in tracks['items']:
+    count +=1
+    if count<25:
+        continue
     if 'track' in item:
         track = item['track']
     else:
@@ -70,7 +82,7 @@ for item in tracks['items']:
             #'outtmpl' : './songs.',
             # 'outtmpl': './songs.',
             #'outtmpl': './songs',
-            'outtmpl': './songs/'+track_artist+" - "+track_name+".",
+            'outtmpl': './songs/'+track_artist.replace("/", "_").replace(".", "_").replace("~", "_")+" - "+track_name.replace("/", "_").replace(".", "_").replace("~", "_")+".",
             'keevideo': True
         }
         with youtube_dl.YoutubeDL(ydl_opts) as ydl:
@@ -79,13 +91,16 @@ for item in tracks['items']:
             except Exception as e:
                 print("Error: " + str(e))
 
-        import glob
-        import os
+
 
         list_of_files = glob.glob('./songs/*')  # * means all if need specific format then *.csv
         latest_file = max(list_of_files, key=os.path.getctime)
         if latest_file.split(".")[-1].lower() != "mp3":
-            from pydub import AudioSegment
+
+            time.sleep(5)
+            list_of_files = glob.glob('./songs/*')  # * means all if need specific format then *.csv
+            latest_file = max(list_of_files, key=os.path.getctime)
+
 
             ending = latest_file.split(".")[-1].lower()
             if ending == "part" or ending == "ds_store" or ending == "txt":
@@ -96,10 +111,7 @@ for item in tracks['items']:
                 audio.export(latest_file.replace(ending, "mp3"), format="mp3")
                 os.remove(latest_file)
             latest_file = latest_file.replace(ending, "mp3")
-        from mutagen.mp3 import MP3
-        from mutagen.id3 import ID3, APIC, error
-        from mutagen.easyid3 import EasyID3
-        import urllib.request
+
 
         urllib.request.urlretrieve(track_image, "image.jpg")
 
